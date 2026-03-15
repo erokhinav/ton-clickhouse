@@ -1,0 +1,26 @@
+<functions>
+    <function>
+        <type>executable_pool</type>
+        <name>raw_to_base64</name>
+        <return_type>String</return_type>
+        <argument>
+            <type>String</type>
+            <name>raw_address</name>
+        </argument>
+        <format>TabSeparated</format>
+        <command>raw_to_base64.py</command>
+        <pool_size>4</pool_size>
+    </function>
+    <function>
+        <type>executable_pool</type>
+        <name>base64_to_raw</name>
+        <return_type>String</return_type>
+        <argument>
+            <type>String</type>
+            <name>base64_address</name>
+        </argument>
+        <format>TabSeparated</format>
+        <command>base64_to_raw.py</command>
+        <pool_size>4</pool_size>
+    </function>
+</functions>

@@ -1,0 +1,25 @@
+version: "3.8"
+
+services:
+  clickhouse:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pgton-clickhouse
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - ./clickhouse/config.d:/etc/clickhouse-server/config.d
+      - ./clickhouse/udf/raw_to_base64.xml:/etc/clickhouse-server/raw_to_base64.xml
+      - ./clickhouse/user_scripts:/var/lib/clickhouse/user_scripts
+      - clickhouse_data:/var/lib/clickhouse
+      - clickhouse_logs:/var/log/clickhouse-server
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+
+volumes:
+  clickhouse_data:
+  clickhouse_logs:
