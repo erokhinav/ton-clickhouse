@@ -67,10 +67,16 @@ def main():
     parser.add_argument(
         "--bounce",
         dest="bounce",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Use bounceable addresses (default). Use --no-bounce for non-bounceable.",
+        action="store_true",
+        help="Use bounceable addresses (default).",
     )
+    parser.add_argument(
+        "--no-bounce",
+        dest="bounce",
+        action="store_false",
+        help="Use non-bounceable addresses.",
+    )
+    parser.set_defaults(bounce=True)
 
     args, _unknown = parser.parse_known_args()
 
