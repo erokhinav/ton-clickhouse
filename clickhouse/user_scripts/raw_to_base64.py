@@ -56,6 +56,7 @@ def raw_to_user_friendly(raw: str, *, bounce: bool = True) -> str:
 def main():
     parser = argparse.ArgumentParser(
         description="Convert TON raw address (wc:hex) to user-friendly base64url.",
+        add_help=False,
     )
     parser.add_argument(
         "bounce_mode",
@@ -63,7 +64,6 @@ def main():
         default=None,
         help="Optional bounce override for CLI usage: `bounce|non-bounce|true|false|1|0`.",
     )
-    # Default keeps existing behavior (bounceable mainnet).
     parser.add_argument(
         "--bounce",
         dest="bounce",
@@ -71,7 +71,8 @@ def main():
         default=True,
         help="Use bounceable addresses (default). Use --no-bounce for non-bounceable.",
     )
-    args = parser.parse_args()
+
+    args, _unknown = parser.parse_known_args()
 
     default_bounce = args.bounce
 
@@ -80,33 +81,51 @@ def main():
         ClickHouse passes arguments as strings; for UInt8 we expect `0` or `1`.
         """
         s = v.strip().lower()
+        if s == "":
+            raise ValueError("empty bounce value")
+
+        try:
+            n = int(s, 10)
+            if n == 0:
+                return False
+            if n == 1:
+                return True
+        except Exception:
+            pass
+
         if s in {"1", "true", "bounce", "bounceable", "yes", "y"}:
             return True
         if s in {"0", "false", "non-bounce", "nonbounce", "non-bounceable", "no", "n"}:
             return False
-        # Fallback: treat any other non-empty value as error.
         raise ValueError(f"invalid bounce value: {v}")
 
     if args.bounce_mode is not None:
-        default_bounce = parse_bounce_override(args.bounce_mode)
-
-    for line in sys.stdin:
-        line = line.rstrip("\n")
         try:
-            # ClickHouse (executable_pool + TabSeparated) passes:
-            # raw_address<TAB>bounce
-            if "\t" in line:
-                raw_address, bounce_val = line.split("\t", 1)
-                bounce = parse_bounce_override(bounce_val)
-            else:
-                # CLI usage: only raw address is provided.
-                raw_address = line
-                bounce = default_bounce
-
-            print(raw_to_user_friendly(raw_address, bounce=bounce))
+            default_bounce = parse_bounce_override(args.bounce_mode)
         except Exception:
+            pass
+
+    try:
+        for line in sys.stdin:
+            line = line.rstrip("\n")
+            try:
+                if "\t" in line:
+                    raw_address, bounce_val = line.split("\t", 1)
+                    bounce = parse_bounce_override(bounce_val)
+                else:
+                    raw_address = line
+                    bounce = default_bounce
+
+                print(raw_to_user_friendly(raw_address, bounce=bounce))
+            except Exception:
+                print("")
+            sys.stdout.flush()
+    except Exception:
+        try:
             print("")
-        sys.stdout.flush()
+            sys.stdout.flush()
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":
