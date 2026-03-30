@@ -8,7 +8,7 @@
             <name>raw_address</name>
         </argument>
         <argument>
-            <type>UInt8</type>
+            <type>Bool</type>
             <name>bounce</name>
         </argument>
         <format>TabSeparated</format>
