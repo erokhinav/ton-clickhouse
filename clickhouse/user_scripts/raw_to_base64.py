@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import sys
 import base64
+import argparse
 
 
 def crc16_ccitt(data: bytes) -> bytes:
@@ -15,7 +16,7 @@ def crc16_ccitt(data: bytes) -> bytes:
     return crc.to_bytes(2, "big")
 
 
-def raw_to_user_friendly(raw: str) -> str:
+def raw_to_user_friendly(raw: str, *, bounce: bool = True) -> str:
     raw = raw.strip()
     if not raw:
         return ""
@@ -32,7 +33,9 @@ def raw_to_user_friendly(raw: str) -> str:
 
     account_id = bytes.fromhex(hex_part)
 
-    tag = 0x11
+    # TON user-friendly flag byte:
+    # 0x11 - bounceable (mainnet), 0x51 - non-bounceable (mainnet).
+    tag = 0x11 if bounce else 0x51
 
     if wc == -1:
         wc_byte = 0xFF
@@ -51,10 +54,56 @@ def raw_to_user_friendly(raw: str) -> str:
 
 
 def main():
+    parser = argparse.ArgumentParser(
+        description="Convert TON raw address (wc:hex) to user-friendly base64url.",
+    )
+    parser.add_argument(
+        "bounce_mode",
+        nargs="?",
+        default=None,
+        help="Optional bounce override for CLI usage: `bounce|non-bounce|true|false|1|0`.",
+    )
+    # Default keeps existing behavior (bounceable mainnet).
+    parser.add_argument(
+        "--bounce",
+        dest="bounce",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Use bounceable addresses (default). Use --no-bounce for non-bounceable.",
+    )
+    args = parser.parse_args()
+
+    default_bounce = args.bounce
+
+    def parse_bounce_override(v: str) -> bool:
+        """
+        ClickHouse passes arguments as strings; for UInt8 we expect `0` or `1`.
+        """
+        s = v.strip().lower()
+        if s in {"1", "true", "bounce", "bounceable", "yes", "y"}:
+            return True
+        if s in {"0", "false", "non-bounce", "nonbounce", "non-bounceable", "no", "n"}:
+            return False
+        # Fallback: treat any other non-empty value as error.
+        raise ValueError(f"invalid bounce value: {v}")
+
+    if args.bounce_mode is not None:
+        default_bounce = parse_bounce_override(args.bounce_mode)
+
     for line in sys.stdin:
         line = line.rstrip("\n")
         try:
-            print(raw_to_user_friendly(line))
+            # ClickHouse (executable_pool + TabSeparated) passes:
+            # raw_address<TAB>bounce
+            if "\t" in line:
+                raw_address, bounce_val = line.split("\t", 1)
+                bounce = parse_bounce_override(bounce_val)
+            else:
+                # CLI usage: only raw address is provided.
+                raw_address = line
+                bounce = default_bounce
+
+            print(raw_to_user_friendly(raw_address, bounce=bounce))
         except Exception:
             print("")
         sys.stdout.flush()

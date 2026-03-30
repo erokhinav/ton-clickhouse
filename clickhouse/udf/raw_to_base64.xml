@@ -7,6 +7,10 @@
             <type>String</type>
             <name>raw_address</name>
         </argument>
+        <argument>
+            <type>UInt8</type>
+            <name>bounce</name>
+        </argument>
         <format>TabSeparated</format>
         <command>raw_to_base64.py</command>
         <pool_size>4</pool_size>
